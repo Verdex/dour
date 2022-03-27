@@ -48,10 +48,10 @@ fn number( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Resul
     alt!(sign<'a>: char => char = plus | minus );
     seq!(maybe ~ maybe_sign<'a>: char => char = s <= sign, { s });
 
-    seq!(maybe ~ science<'a>: char => String = _e <= e, ms <= maybe_sign, ds <= digits, {
+    seq!(maybe ~ science<'a>: char => String = _e <= e, ms <= maybe_sign, init <= digit, ds <= digits, {
         match ms {
-            Some(x) => format!("e{}{}", x, ds.into_iter().collect::<String>()),
-            None => format!("e{}", ds.into_iter().collect::<String>()),
+            Some(x) => format!("e{}{}{}", x, init, ds.into_iter().collect::<String>()),
+            None => format!("e{}{}", init, ds.into_iter().collect::<String>()),
         }
     } );
 
@@ -199,6 +199,18 @@ mod test {
 
         t("0", 0.0)?;
         t("0.0", 0.0)?;
+        t("1E1", 1E1)?;
+        t("1e1", 1e1)?;
+        t("+1.0", 1.0)?;
+        t("-1.0", -1.0)?;
+        t("1E+1", 1E+1)?;
+        t("1e+1", 1e+1)?;
+        t("1234.5678", 1234.5678)?;
+        t("1234.5678E-90", 1234.5678E-90)?;
+        t("1234.5678e-90", 1234.5678e-90)?;
+        t("1234.5678e-901", 1234.5678e-901)?;
+        t("1234", 1234.0)?;
+
 
         Ok(())
     }
