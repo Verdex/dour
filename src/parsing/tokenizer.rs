@@ -170,7 +170,7 @@ fn upper_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 
 
 pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
-    alt!( main<'a> : char => Token = lower_symbol | upper_symbol );
+    alt!( main<'a> : char => Token = lower_symbol | upper_symbol | number );
 
     main(input)
 }
@@ -178,6 +178,30 @@ pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 #[cfg(test)]
 mod test { 
     use super::*;
+
+    #[test]
+    fn should_parse_numbers() -> Result<(), MatchError> {
+        fn t(s : &str, expected : f64) -> Result<(), MatchError> {
+            let mut input = s.char_indices();
+            let output = tokenize(&mut input)?;
+
+            assert_eq!( output.start, 0 );
+            assert_eq!( output.end, s.len() - 1 );
+
+            let value = match output.item {
+                Token::Number(n) => n,
+                _ => panic!("not number"),
+            };
+
+            assert_eq!( value, expected );
+            Ok(())
+        }
+
+        t("0", 0.0)?;
+        t("0.0", 0.0)?;
+
+        Ok(())
+    }
 
     #[test]
     fn should_parse_boolean_starting_lower_symbol() -> Result<(), MatchError> {
