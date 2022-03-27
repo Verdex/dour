@@ -5,8 +5,8 @@ use array_pattern::{Success, MatchError, seq, alt};
 pub enum Token {
     LowerSymbol(String),
     UpperSymbol(String),
-    Int(i64),
     Bool(bool),
+    Int(i64),
     Float(f64),
     LParen,
     RParen,
@@ -20,6 +20,7 @@ pub enum Token {
     SemiColon,
     Colon,
 }
+
 
 
 fn lower_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
@@ -59,7 +60,11 @@ fn lower_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
         r
     } );
     seq!( main<'a> : char => Token = init <= init_lower_symbol_char, rs <= rests, {
-        Token::LowerSymbol(format!( "{}{}", init, rs.into_iter().collect::<String>() ))
+        match format!( "{}{}", init, rs.into_iter().collect::<String>()) {
+            x if x == "true" => Token::Bool(true),
+            x if x == "false" => Token::Bool(false),
+            x => Token::LowerSymbol(x),
+        }
     } );
 
     main(input)
@@ -109,10 +114,10 @@ fn upper_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 }
 
 
+pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
+    alt!( main<'a> : char => Token = lower_symbol | upper_symbol );
 
-pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Token, MatchError> {
-    
-    Err(MatchError::FatalEndOfFile)
+    main(input)
 }
 
 #[cfg(test)]
@@ -120,13 +125,70 @@ mod test {
     use super::*;
 
     #[test]
-    fn lower_symbol_should_parse_lower_symbol() -> Result<(), MatchError> {
-        let s = "lower_symbol";
+    fn should_parse_boolean_starting_lower_symbol() -> Result<(), MatchError> {
+        let s = "false_";
         let mut input = s.char_indices();
-        let output = lower_symbol(&mut input)?;
+        let output = tokenize(&mut input)?;
 
         assert_eq!( output.start, 0 );
-        assert_eq!( output.end, 11 );
+        assert_eq!( output.end, s.len() - 1 );
+
+        let name = match output.item {
+            Token::LowerSymbol(n) => n,
+            _ => panic!("not lower symbol"),
+        };
+
+        assert_eq!( name, "false_" );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_parse_false() -> Result<(), MatchError> {
+        let s = "false";
+        let mut input = s.char_indices();
+        let output = tokenize(&mut input)?;
+
+        assert_eq!( output.start, 0 );
+        assert_eq!( output.end, s.len() - 1 );
+
+        let name = match output.item {
+            Token::Bool(n) => n,
+            _ => panic!("not bool"),
+        };
+
+        assert_eq!( name, false );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_parse_true() -> Result<(), MatchError> {
+        let s = "true";
+        let mut input = s.char_indices();
+        let output = tokenize(&mut input)?;
+
+        assert_eq!( output.start, 0 );
+        assert_eq!( output.end, s.len() - 1 );
+
+        let name = match output.item {
+            Token::Bool(n) => n,
+            _ => panic!("not bool"),
+        };
+
+        assert_eq!( name, true );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_parse_lower_symbol() -> Result<(), MatchError> {
+        let s = "lower_symbol";
+        let mut input = s.char_indices();
+        let output = tokenize(&mut input)?;
+
+        assert_eq!( output.start, 0 );
+        assert_eq!( output.end, s.len() - 1 );
 
         let name = match output.item {
             Token::LowerSymbol(n) => n,
@@ -139,13 +201,13 @@ mod test {
     }
 
     #[test]
-    fn lower_symbol_should_parse_single_upper_symbol() -> Result<(), MatchError> {
+    fn should_parse_single_lower_symbol() -> Result<(), MatchError> {
         let s = "l";
         let mut input = s.char_indices();
-        let output = lower_symbol(&mut input)?;
+        let output = tokenize(&mut input)?;
 
         assert_eq!( output.start, 0 );
-        assert_eq!( output.end, 0 );
+        assert_eq!( output.end, s.len() - 1 );
 
         let name = match output.item {
             Token::LowerSymbol(n) => n,
@@ -158,13 +220,13 @@ mod test {
     }
 
     #[test]
-    fn upper_symbol_should_parse_upper_symbol() -> Result<(), MatchError> {
+    fn should_parse_upper_symbol() -> Result<(), MatchError> {
         let s = "UpperSymbol";
         let mut input = s.char_indices();
-        let output = upper_symbol(&mut input)?;
+        let output = tokenize(&mut input)?;
 
         assert_eq!( output.start, 0 );
-        assert_eq!( output.end, 10 );
+        assert_eq!( output.end, s.len() - 1 );
 
         let name = match output.item {
             Token::UpperSymbol(n) => n,
@@ -177,13 +239,13 @@ mod test {
     }
 
     #[test]
-    fn upper_symbol_should_parse_single_upper_symbol() -> Result<(), MatchError> {
+    fn should_parse_single_upper_symbol() -> Result<(), MatchError> {
         let s = "U";
         let mut input = s.char_indices();
-        let output = upper_symbol(&mut input)?;
+        let output = tokenize(&mut input)?;
 
         assert_eq!( output.start, 0 );
-        assert_eq!( output.end, 0 );
+        assert_eq!( output.end, s.len() - 1 );
 
         let name = match output.item {
             Token::UpperSymbol(n) => n,
