@@ -6,8 +6,7 @@ pub enum Token {
     LowerSymbol(String),
     UpperSymbol(String),
     Bool(bool),
-    Int(i64),
-    Float(f64),
+    Number(f64),
     LParen,
     RParen,
     LCurl,
@@ -21,7 +20,63 @@ pub enum Token {
     Colon,
 }
 
+fn number( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
+    fn digit( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
+        let mut rp = input.clone();
+        match input.next() {
+            Some((i, c)) if c.is_digit(10) => Ok(Success { start: i, end: i, item: c }),
+            Some((i, _)) => { 
+                std::mem::swap(&mut rp, input);
+                Err(MatchError::Error(i))
+            },
+            None => {
+                std::mem::swap(&mut rp, input);
+                Err(MatchError::ErrorEndOfFile)
+            },
+        }
+    }
 
+    seq!(zero_or_more ~ digits<'a>: char => char = d <= digit, { d });
+    seq!(maybe ~ dot<'a>: char => char = d <= '.', { d });
+
+    seq!(little_e<'a>: char => char = e <= 'e', { e });
+    seq!(big_e<'a>: char => char = e <= 'E', { e });
+    alt!(e<'a>: char => char = little_e | big_e);
+
+    seq!(plus<'a>: char => char = p <= '+', { p });
+    seq!(minus<'a>: char => char = m <= '-', { m });
+    alt!(sign<'a>: char => char = plus | minus );
+    seq!(maybe ~ maybe_sign<'a>: char => char = s <= sign, { s });
+
+    seq!(maybe ~ science<'a>: char => String = _e <= e, ms <= maybe_sign, ds <= digits, {
+        match ms {
+            Some(x) => format!("e{}{}", x, ds.into_iter().collect::<String>()),
+            None => format!("e{}", ds.into_iter().collect::<String>()),
+        }
+    } );
+
+    alt!(initial<'a>: char => char = sign | digit );
+
+    seq!(main<'a>: char => String = init <= initial, whole <= digits, d <= dot, fractional <= digits, s <= science, {
+        let ret = format!("{}{}", init, whole.into_iter().collect::<String>());
+        let ret = match d { 
+            Some(_) => format!("{}.{}", ret, fractional.into_iter().collect::<String>()),
+            None => ret,
+        };
+        match s {
+            Some(s) => format!("{}{}", ret, s),
+            None => ret,
+        }
+    });
+
+    match main(input) {
+        Ok(Success { item, start, end }) => {
+            let ret = item.parse::<f64>().expect("allowed number string that rust fails to parse with parse::<f64>()");
+            Ok(Success { item: Token::Number(ret), start, end })
+        },
+        Err(e) => Err(e),
+    }
+}
 
 fn lower_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
 
