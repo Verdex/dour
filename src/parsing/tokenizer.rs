@@ -158,6 +158,7 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
     loop {
         match token(&mut x) {
             Ok(t) => ret.push(t),
+            Err(MatchError::ErrorEndOfFile) => break,
             Err(e) => return Err(e),
         }
     }
@@ -172,13 +173,13 @@ mod test {
     #[test]
     fn should_parse_string() -> Result<(), MatchError> {
         fn t(input : &str, expected : &str) -> Result<(), MatchError> {
-            let output = tokenize(input)?;
+            let output = internal_tokenize(input)?;
 
-            assert_eq!( output.start, 0 );
-            assert_eq!( output.end, input.len() - 1 );
+            assert_eq!( output.len(), 1 );
+            assert_eq!( output[0].start, 0 );
+            assert_eq!( output[0].end, input.len() - 1 );
 
-            assert_eq!( output.item.len(), 1 );
-            let value = match &output.item[0] {
+            let value = match &output[0].item {
                 InternalToken::String(n) => n.clone(),
                 _ => panic!("not string"),
             };
@@ -196,13 +197,13 @@ mod test {
     #[test]
     fn should_parse_numbers() -> Result<(), MatchError> {
         fn t(input : &str, expected : f64) -> Result<(), MatchError> {
-            let output = tokenize(input)?;
+            let output = internal_tokenize(input)?;
 
-            assert_eq!( output.start, 0 );
-            assert_eq!( output.end, input.len() - 1 );
+            assert_eq!( output.len(), 1 );
+            assert_eq!( output[0].start, 0 );
+            assert_eq!( output[0].end, input.len() - 1 );
 
-            assert_eq!( output.item.len(), 1 );
-            let value = match &output.item[0] {
+            let value = match &output[0].item {
                 InternalToken::Number(n) => *n,
                 _ => panic!("not number"),
             };
@@ -231,13 +232,13 @@ mod test {
     #[test]
     fn should_parse_boolean_starting_lower_symbol() -> Result<(), MatchError> {
         let input = "false_";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
@@ -250,13 +251,13 @@ mod test {
     #[test]
     fn should_parse_false() -> Result<(), MatchError> {
         let input = "false";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::Bool(n) => *n,
             _ => panic!("not bool"),
         };
@@ -269,13 +270,13 @@ mod test {
     #[test]
     fn should_parse_true() -> Result<(), MatchError> {
         let input = "true";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::Bool(n) => *n,
             _ => panic!("not bool"),
         };
@@ -288,13 +289,13 @@ mod test {
     #[test]
     fn should_parse_lower_symbol() -> Result<(), MatchError> {
         let input = "lower_symbol";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
@@ -307,13 +308,13 @@ mod test {
     #[test]
     fn should_parse_single_lower_symbol() -> Result<(), MatchError> {
         let input = "l";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
@@ -326,13 +327,13 @@ mod test {
     #[test]
     fn should_parse_upper_symbol() -> Result<(), MatchError> {
         let input = "UpperSymbol";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
@@ -345,13 +346,13 @@ mod test {
     #[test]
     fn should_parse_single_upper_symbol() -> Result<(), MatchError> {
         let input = "U";
-        let output = tokenize(input)?;
+        let output = internal_tokenize(input)?;
 
-        assert_eq!( output.start, 0 );
-        assert_eq!( output.end, input.len() - 1 );
+        assert_eq!( output.len(), 1 );
+        assert_eq!( output[0].start, 0 );
+        assert_eq!( output[0].end, input.len() - 1 );
 
-        assert_eq!( output.item.len(), 1 );
-        let name = match &output.item[0] {
+        let name = match &output[0].item {
             InternalToken::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
