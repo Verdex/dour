@@ -194,9 +194,9 @@ mod test {
         t(r#""string input""#, "string input")?;
         t(r#""string \n input""#, "string \n input")?;
         t(r#""string \r input""#, "string \r input")?;
-        //t(r#""string \0 input""#, "string \0 input")?;
-        //t(r#""string \t input""#, "string \t input")?;
-        // TODO more cases
+        t(r#""string \0 input""#, "string \0 input")?;
+        t(r#""string \t input""#, "string \t input")?;
+        t(r#""string \\ input""#, "string \\ input")?;
 
         Ok(())
     }
