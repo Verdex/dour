@@ -122,11 +122,13 @@ group!(upper_symbol<'a>: char => Token = |input| {
     main(input)
 });
 
-pub fn tokenize( input : &str ) -> Result<Success<Token>, MatchError> {
+pub fn tokenize( input : &str ) -> Result<Success<Vec<Token>>, MatchError> {
 
     let mut x = input.char_indices();
 
-    alt!( main<'a> : char => Token = lower_symbol | upper_symbol | number | string );
+    alt!( tokens<'a> : char => Token = lower_symbol | upper_symbol | number | string );
+
+    seq!( zero_or_more ~ main<'a>: char => Token = ts <= tokens, { ts });
 
     main(&mut x)
 }
@@ -143,8 +145,9 @@ mod test {
             assert_eq!( output.start, 0 );
             assert_eq!( output.end, input.len() - 1 );
 
-            let value = match output.item {
-                Token::String(n) => n,
+            assert_eq!( output.item.len(), 1 );
+            let value = match &output.item[0] {
+                Token::String(n) => n.clone(),
                 _ => panic!("not string"),
             };
 
@@ -165,8 +168,9 @@ mod test {
             assert_eq!( output.start, 0 );
             assert_eq!( output.end, input.len() - 1 );
 
-            let value = match output.item {
-                Token::Number(n) => n,
+            assert_eq!( output.item.len(), 1 );
+            let value = match &output.item[0] {
+                Token::Number(n) => *n,
                 _ => panic!("not number"),
             };
 
@@ -199,8 +203,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::LowerSymbol(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -217,8 +222,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::Bool(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::Bool(n) => *n,
             _ => panic!("not bool"),
         };
 
@@ -235,8 +241,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::Bool(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::Bool(n) => *n,
             _ => panic!("not bool"),
         };
 
@@ -253,8 +260,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::LowerSymbol(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -271,8 +279,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::LowerSymbol(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -289,8 +298,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::UpperSymbol(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
 
@@ -307,8 +317,9 @@ mod test {
         assert_eq!( output.start, 0 );
         assert_eq!( output.end, input.len() - 1 );
 
-        let name = match output.item {
-            Token::UpperSymbol(n) => n,
+        assert_eq!( output.item.len(), 1 );
+        let name = match &output.item[0] {
+            Token::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
 
