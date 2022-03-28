@@ -7,6 +7,7 @@ pub enum Token {
     UpperSymbol(String),
     Bool(bool),
     Number(f64),
+    String(String),
     LParen,
     RParen,
     LCurl,
@@ -18,6 +19,33 @@ pub enum Token {
     Comma,
     SemiColon,
     Colon,
+}
+
+fn string( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
+    seq!(slash_n<'a>: char => char = _slash <= '\\', _n <= 'n', { '\n' });
+    seq!(slash_r<'a>: char => char = _slash <= '\\', _r <= 'r', { '\r' });
+    seq!(slash_t<'a>: char => char = _slash <= '\\', _t <= 't', { '\t' });
+    seq!(slash_slash<'a>: char => char = _slash <= '\\', _s <= '\\', { '\\' });
+    seq!(slash_zero<'a>: char => char = _slash <= '\\', _z <= '0', { '\0' });
+    seq!(slash_quote<'a>: char => char = _slash <= '\\', _q <= '"', { '"' });
+    seq!(any<'a>: char => char = c <= _, { c });
+    alt!(str_char<'a>: char => char = slash_n 
+                                    | slash_r
+                                    | slash_t
+                                    | slash_quote
+                                    | slash_slash
+                                    | slash_zero
+                                    | any 
+                                    );
+
+    seq!(zero_or_more ~ str_chars<'a>: char => char = sc <= str_char, { sc });
+    seq!(quote<'a>: char => () = _q <= '"', { () });
+
+    seq!(main<'a>: char => Token = _q1 <= quote, sc <= str_chars, _q2 <= quote, {
+        Token::String(sc.into_iter().collect::<String>())
+    });
+
+    main(input)
 }
 
 fn number( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
