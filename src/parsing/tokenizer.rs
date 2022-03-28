@@ -29,6 +29,7 @@ pub enum Token {
 
 #[derive(Debug)]
 enum InternalToken {
+    Junk,
     LowerSymbol(String),
     UpperSymbol(String),
     Bool(bool),
@@ -45,6 +46,12 @@ enum InternalToken {
     Comma,
     SemiColon,
     Colon,
+    Dot,
+    OrBar,
+    SLArrow,
+    SRArrow,
+    DLArrow,
+    DRArrow,
 }
 
 group!(string<'a>: char => InternalToken = |input| {
@@ -142,6 +149,21 @@ group!(upper_symbol<'a>: char => InternalToken = |input| {
     seq!( main<'a> : char => InternalToken = init <= init_upper_symbol_char, rs <= rests, {
         InternalToken::UpperSymbol(format!( "{}{}", init, rs.into_iter().collect::<String>() ))
     } );
+
+    main(input)
+});
+
+group!(junk<'a>: char => InternalToken = |input| {
+    pred!(p_ws<'a>: char => char = |c : char| c.is_whitespace());
+    seq!(zero_or_more ~ ws<'a>: char => char = _1 <= p_ws, { '\0' });
+    seq!(whitespace<'a>: char => InternalToken = _1 <= ws, { InternalToken::Junk });
+
+    pred!(end_line<'a>: char => char = |c : char| c == '\n' || c == '\r');
+    pred!(a<'a>: char => char = |c : char| c != '\n' && c != '\r');
+    seq!(zero_or_more ~ anything<'a>: char => char = c <= a, { c });
+    seq!(comment<'a>: char => InternalToken = _1 <= '#', _2 <= anything, _3 <= end_line, { InternalToken::Junk });
+
+    alt!(main<'a>: char => InternalToken = whitespace | comment);
 
     main(input)
 });
