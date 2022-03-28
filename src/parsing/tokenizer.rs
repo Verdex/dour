@@ -197,6 +197,7 @@ mod test {
         t(r#""string \0 input""#, "string \0 input")?;
         t(r#""string \t input""#, "string \t input")?;
         t(r#""string \\ input""#, "string \\ input")?;
+        t(r#""string \" input""#, "string \" input")?;
 
         Ok(())
     }
