@@ -48,26 +48,24 @@ enum InternalToken {
 }
 
 group!(string<'a>: char => InternalToken = |input| {
-    seq!(slash_n<'a>: char => char = _slash <= '\\', _n <= 'n', { '\n' });
-    seq!(slash_r<'a>: char => char = _slash <= '\\', _r <= 'r', { '\r' });
-    seq!(slash_t<'a>: char => char = _slash <= '\\', _t <= 't', { '\t' });
-    seq!(slash_slash<'a>: char => char = _slash <= '\\', _s <= '\\', { '\\' });
-    seq!(slash_zero<'a>: char => char = _slash <= '\\', _z <= '0', { '\0' });
-    seq!(slash_quote<'a>: char => char = _slash <= '\\', _q <= '"', { '"' });
+    seq!(n<'a>: char => char = _n <= 'n', { '\n' });
+    seq!(r<'a>: char => char = _r <= 'r', { '\r' });
+    seq!(t<'a>: char => char = _t <= 't', { '\t' });
+    seq!(slash<'a>: char => char = _s <= '\\', { '\\' });
+    seq!(zero<'a>: char => char =  _z <= '0', { '\0' });
+    seq!(quote<'a>: char => char = _q <= '"', { '"' });
+
+    alt!(code<'a>: char => char = n | r | t | slash | zero | quote);
+    seq!(escape<'a>: char => char = _slash <= '\\', c <= code, { c });
+
     pred!(any<'a>: char => char = |c| c != '"');
-    alt!(str_char<'a>: char => char = slash_n 
-                                    | slash_r
-                                    | slash_t
-                                    | slash_quote
-                                    | slash_slash
-                                    | slash_zero
+    alt!(str_char<'a>: char => char = escape
                                     | any  
                                     );
 
     seq!(zero_or_more ~ str_chars<'a>: char => char = sc <= str_char, { sc });
-    seq!(quote<'a>: char => () = _q <= '"', { () });
 
-    seq!(main<'a>: char => InternalToken = _q1 <= quote, sc <= str_chars, _q2 <= quote, {
+    seq!(main<'a>: char => InternalToken = _q1 <= '"', sc <= str_chars, _q2 <= '"', {
         InternalToken::String(sc.into_iter().collect::<String>())
     });
 
@@ -152,7 +150,11 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
 
     let mut x = input.char_indices();
 
-    alt!( token<'a> : char => InternalToken = lower_symbol | upper_symbol | number | string );
+    alt!( token<'a> : char => InternalToken = lower_symbol 
+                                            | upper_symbol 
+                                            | number 
+                                            | string 
+                                            );
 
     let mut ret = vec![];
     loop {
@@ -184,11 +186,16 @@ mod test {
                 _ => panic!("not string"),
             };
 
+            println!("{}", value);
             assert_eq!( value, expected );
             Ok(())
         }
 
         t(r#""string input""#, "string input")?;
+        t(r#""string \n input""#, "string \n input")?;
+        t(r#""string \r input""#, "string \r input")?;
+        //t(r#""string \0 input""#, "string \0 input")?;
+        //t(r#""string \t input""#, "string \t input")?;
         // TODO more cases
 
         Ok(())
