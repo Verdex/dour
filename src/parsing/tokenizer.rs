@@ -1,6 +1,12 @@
 
 use array_pattern::{Success, MatchError, seq, alt, pred, group};
 
+/*#[derive(Debug)]
+pub struct TMeta {
+    pub start : usize,
+    pub end : usize,
+}
+
 #[derive(Debug)]
 pub enum Token {
     LowerSymbol(String),
@@ -19,9 +25,29 @@ pub enum Token {
     Comma,
     SemiColon,
     Colon,
+}*/
+
+#[derive(Debug)]
+enum InternalToken {
+    LowerSymbol(String),
+    UpperSymbol(String),
+    Bool(bool),
+    Number(f64),
+    String(String),
+    LParen,
+    RParen,
+    LCurl,
+    RCurl,
+    LSquare,
+    RSquare,
+    LAngle,
+    RAngle,
+    Comma,
+    SemiColon,
+    Colon,
 }
 
-group!(string<'a>: char => Token = |input| {
+group!(string<'a>: char => InternalToken = |input| {
     seq!(slash_n<'a>: char => char = _slash <= '\\', _n <= 'n', { '\n' });
     seq!(slash_r<'a>: char => char = _slash <= '\\', _r <= 'r', { '\r' });
     seq!(slash_t<'a>: char => char = _slash <= '\\', _t <= 't', { '\t' });
@@ -41,14 +67,14 @@ group!(string<'a>: char => Token = |input| {
     seq!(zero_or_more ~ str_chars<'a>: char => char = sc <= str_char, { sc });
     seq!(quote<'a>: char => () = _q <= '"', { () });
 
-    seq!(main<'a>: char => Token = _q1 <= quote, sc <= str_chars, _q2 <= quote, {
-        Token::String(sc.into_iter().collect::<String>())
+    seq!(main<'a>: char => InternalToken = _q1 <= quote, sc <= str_chars, _q2 <= quote, {
+        InternalToken::String(sc.into_iter().collect::<String>())
     });
 
     main(input)
 });
 
-group!(number<'a>: char => Token = |input| { 
+group!(number<'a>: char => InternalToken = |input| { 
     pred!(digit<'a>: char => char = |c : char| c.is_digit(10));
     seq!(zero_or_more ~ digits<'a>: char => char = d <= digit, { d });
     seq!(maybe ~ dot<'a>: char => char = d <= '.', { d });
@@ -86,51 +112,57 @@ group!(number<'a>: char => Token = |input| {
     match main(input) {
         Ok(Success { item, start, end }) => {
             let ret = item.parse::<f64>().expect("allowed number string that rust fails to parse with parse::<f64>()");
-            Ok(Success { item: Token::Number(ret), start, end })
+            Ok(Success { item: InternalToken::Number(ret), start, end })
         },
         Err(e) => Err(e),
     }
 });
 
-group!(lower_symbol<'a>: char => Token = |input| {
+group!(lower_symbol<'a>: char => InternalToken = |input| {
     pred!(init_lower_symbol_char<'a>: char => char = |c : char| c.is_lowercase() || c == '_');
     pred!(rest_lower_symbol_char<'a>: char => char = |c : char| c.is_alphanumeric() || c == '_');
     alt!( rest<'a> : char => char = init_lower_symbol_char | rest_lower_symbol_char );
     seq!( zero_or_more ~ rests<'a> : char => char = r <= rest, {
         r
     } );
-    seq!( main<'a> : char => Token = init <= init_lower_symbol_char, rs <= rests, {
+    seq!( main<'a> : char => InternalToken = init <= init_lower_symbol_char, rs <= rests, {
         match format!( "{}{}", init, rs.into_iter().collect::<String>()) {
-            x if x == "true" => Token::Bool(true),
-            x if x == "false" => Token::Bool(false),
-            x => Token::LowerSymbol(x),
+            x if x == "true" => InternalToken::Bool(true),
+            x if x == "false" => InternalToken::Bool(false),
+            x => InternalToken::LowerSymbol(x),
         }
     } );
 
     main(input)
 });
 
-group!(upper_symbol<'a>: char => Token = |input| { 
+group!(upper_symbol<'a>: char => InternalToken = |input| { 
     pred!(init_upper_symbol_char<'a>: char => char = |c : char| c.is_uppercase());
     pred!(rest_upper_symbol_char<'a>: char => char = |c : char| c.is_alphanumeric());
     alt!( rest<'a> : char => char = init_upper_symbol_char | rest_upper_symbol_char );
     seq!( zero_or_more ~ rests<'a> : char => char = r <= rest, { r } );
-    seq!( main<'a> : char => Token = init <= init_upper_symbol_char, rs <= rests, {
-        Token::UpperSymbol(format!( "{}{}", init, rs.into_iter().collect::<String>() ))
+    seq!( main<'a> : char => InternalToken = init <= init_upper_symbol_char, rs <= rests, {
+        InternalToken::UpperSymbol(format!( "{}{}", init, rs.into_iter().collect::<String>() ))
     } );
 
     main(input)
 });
 
-pub fn tokenize( input : &str ) -> Result<Success<Vec<Token>>, MatchError> {
+fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, MatchError> {
 
     let mut x = input.char_indices();
 
-    alt!( tokens<'a> : char => Token = lower_symbol | upper_symbol | number | string );
+    alt!( token<'a> : char => InternalToken = lower_symbol | upper_symbol | number | string );
 
-    seq!( zero_or_more ~ main<'a>: char => Token = ts <= tokens, { ts });
+    let mut ret = vec![];
+    loop {
+        match token(&mut x) {
+            Ok(t) => ret.push(t),
+            Err(e) => return Err(e),
+        }
+    }
 
-    main(&mut x)
+    Ok(ret)
 }
 
 #[cfg(test)]
@@ -147,7 +179,7 @@ mod test {
 
             assert_eq!( output.item.len(), 1 );
             let value = match &output.item[0] {
-                Token::String(n) => n.clone(),
+                InternalToken::String(n) => n.clone(),
                 _ => panic!("not string"),
             };
 
@@ -156,6 +188,7 @@ mod test {
         }
 
         t(r#""string input""#, "string input")?;
+        // TODO more cases
 
         Ok(())
     }
@@ -170,7 +203,7 @@ mod test {
 
             assert_eq!( output.item.len(), 1 );
             let value = match &output.item[0] {
-                Token::Number(n) => *n,
+                InternalToken::Number(n) => *n,
                 _ => panic!("not number"),
             };
 
@@ -205,7 +238,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::LowerSymbol(n) => n.clone(),
+            InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -224,7 +257,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::Bool(n) => *n,
+            InternalToken::Bool(n) => *n,
             _ => panic!("not bool"),
         };
 
@@ -243,7 +276,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::Bool(n) => *n,
+            InternalToken::Bool(n) => *n,
             _ => panic!("not bool"),
         };
 
@@ -262,7 +295,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::LowerSymbol(n) => n.clone(),
+            InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -281,7 +314,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::LowerSymbol(n) => n.clone(),
+            InternalToken::LowerSymbol(n) => n.clone(),
             _ => panic!("not lower symbol"),
         };
 
@@ -300,7 +333,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::UpperSymbol(n) => n.clone(),
+            InternalToken::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
 
@@ -319,7 +352,7 @@ mod test {
 
         assert_eq!( output.item.len(), 1 );
         let name = match &output.item[0] {
-            Token::UpperSymbol(n) => n.clone(),
+            InternalToken::UpperSymbol(n) => n.clone(),
             _ => panic!("not upper symbol"),
         };
 
