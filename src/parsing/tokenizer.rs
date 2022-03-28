@@ -49,21 +49,7 @@ fn string( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Resul
 }
 
 fn number( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
-    fn digit( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
-        let mut rp = input.clone();
-        match input.next() {
-            Some((i, c)) if c.is_digit(10) => Ok(Success { start: i, end: i, item: c }),
-            Some((i, _)) => { 
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::Error(i))
-            },
-            None => {
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::ErrorEndOfFile)
-            },
-        }
-    }
-
+    pred!(digit<'a>: char => char = |c : char| c.is_digit(10));
     seq!(zero_or_more ~ digits<'a>: char => char = d <= digit, { d });
     seq!(maybe ~ dot<'a>: char => char = d <= '.', { d });
 
@@ -108,36 +94,8 @@ fn number( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Resul
 
 fn lower_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
 
-    fn init_lower_symbol_char( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
-        let mut rp = input.clone();
-        match input.next() {
-            Some((i, c)) if c.is_lowercase() || c == '_' => Ok(Success { start: i, end: i, item: c }),
-            Some((i, _)) => { 
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::Error(i))
-            },
-            None => {
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::ErrorEndOfFile)
-            },
-        }
-    }
-
-    fn rest_lower_symbol_char( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
-        let mut rp = input.clone();
-        match input.next() {
-            Some((i, c)) if c.is_alphanumeric() || c == '_' => Ok(Success { start: i, end: i, item: c }),
-            Some((i, _)) => { 
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::Error(i))
-            },
-            None => {
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::ErrorEndOfFile)
-            },
-        }
-    }
-    
+    pred!(init_lower_symbol_char<'a>: char => char = |c : char| c.is_lowercase() || c == '_');
+    pred!(rest_lower_symbol_char<'a>: char => char = |c : char| c.is_alphanumeric() || c == '_');
     alt!( rest<'a> : char => char = init_lower_symbol_char | rest_lower_symbol_char );
     seq!( zero_or_more ~ rests<'a> : char => char = r <= rest, {
         r
@@ -155,40 +113,10 @@ fn lower_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 
 fn upper_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
 
-    fn init_upper_symbol_char( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
-        let mut rp = input.clone();
-        match input.next() {
-            Some((i, c)) if c.is_uppercase() => Ok(Success { start: i, end: i, item: c }),
-            Some((i, _)) => { 
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::Error(i))
-            },
-            None => {
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::ErrorEndOfFile)
-            },
-        }
-    }
-
-    fn rest_upper_symbol_char( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<char>, MatchError> {
-        let mut rp = input.clone();
-        match input.next() {
-            Some((i, c)) if c.is_alphanumeric() => Ok(Success { start: i, end: i, item: c }),
-            Some((i, _)) => { 
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::Error(i))
-            },
-            None => {
-                std::mem::swap(&mut rp, input);
-                Err(MatchError::ErrorEndOfFile)
-            },
-        }
-    }
-
+    pred!(init_upper_symbol_char<'a>: char => char = |c : char| c.is_uppercase());
+    pred!(rest_upper_symbol_char<'a>: char => char = |c : char| c.is_alphanumeric());
     alt!( rest<'a> : char => char = init_upper_symbol_char | rest_upper_symbol_char );
-    seq!( zero_or_more ~ rests<'a> : char => char = r <= rest, {
-        r
-    } );
+    seq!( zero_or_more ~ rests<'a> : char => char = r <= rest, { r } );
     seq!( main<'a> : char => Token = init <= init_upper_symbol_char, rs <= rests, {
         Token::UpperSymbol(format!( "{}{}", init, rs.into_iter().collect::<String>() ))
     } );
