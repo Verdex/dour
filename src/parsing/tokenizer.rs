@@ -1,5 +1,5 @@
 
-use array_pattern::{Success, MatchError, seq, alt};
+use array_pattern::{Success, MatchError, seq, alt, pred, group};
 
 #[derive(Debug)]
 pub enum Token {
@@ -28,14 +28,14 @@ fn string( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Resul
     seq!(slash_slash<'a>: char => char = _slash <= '\\', _s <= '\\', { '\\' });
     seq!(slash_zero<'a>: char => char = _slash <= '\\', _z <= '0', { '\0' });
     seq!(slash_quote<'a>: char => char = _slash <= '\\', _q <= '"', { '"' });
-    seq!(any<'a>: char => char = c <= _, { c });
+    pred!(any<'a>: char => char = |c| c != '"');
     alt!(str_char<'a>: char => char = slash_n 
                                     | slash_r
                                     | slash_t
                                     | slash_quote
                                     | slash_slash
                                     | slash_zero
-                                    | any 
+                                    | any  
                                     );
 
     seq!(zero_or_more ~ str_chars<'a>: char => char = sc <= str_char, { sc });
@@ -198,7 +198,7 @@ fn upper_symbol( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 
 
 pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) -> Result<Success<Token>, MatchError> {
-    alt!( main<'a> : char => Token = lower_symbol | upper_symbol | number );
+    alt!( main<'a> : char => Token = lower_symbol | upper_symbol | number | string );
 
     main(input)
 }
@@ -206,6 +206,29 @@ pub fn tokenize( input : &mut (impl Iterator<Item = (usize, char)> + Clone) ) ->
 #[cfg(test)]
 mod test { 
     use super::*;
+
+    #[test]
+    fn should_parse_string() -> Result<(), MatchError> {
+        fn t(s : &str, expected : &str) -> Result<(), MatchError> {
+            let mut input = s.char_indices();
+            let output = tokenize(&mut input)?;
+
+            assert_eq!( output.start, 0 );
+            assert_eq!( output.end, s.len() - 1 );
+
+            let value = match output.item {
+                Token::String(n) => n,
+                _ => panic!("not string"),
+            };
+
+            assert_eq!( value, expected );
+            Ok(())
+        }
+
+        t(r#""string input""#, "string input")?;
+
+        Ok(())
+    }
 
     #[test]
     fn should_parse_numbers() -> Result<(), MatchError> {
