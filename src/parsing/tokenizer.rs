@@ -156,7 +156,7 @@ group!(upper_symbol<'a>: char => InternalToken = |input| {
 group!(junk<'a>: char => InternalToken = |input| {
     pred!(p_ws<'a>: char => char = |c : char| c.is_whitespace());
     seq!(zero_or_more ~ ws<'a>: char => char = _1 <= p_ws, { '\0' });
-    seq!(whitespace<'a>: char => InternalToken = _1 <= ws, { InternalToken::Junk });
+    seq!(whitespace<'a>: char => InternalToken = _1 <= p_ws, _2 <= ws, { InternalToken::Junk });
 
     pred!(end_line<'a>: char => char = |c : char| c == '\n' || c == '\r');
     pred!(a<'a>: char => char = |c : char| c != '\n' && c != '\r');
@@ -172,7 +172,8 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
 
     let mut x = input.char_indices();
 
-    alt!( token<'a> : char => InternalToken = lower_symbol 
+    alt!( token<'a> : char => InternalToken = junk
+                                            | lower_symbol 
                                             | upper_symbol 
                                             | number 
                                             | string 
