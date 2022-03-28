@@ -195,6 +195,8 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
 mod test { 
     use super::*;
 
+    // TODO junk test
+
     #[test]
     fn should_parse_string() -> Result<(), MatchError> {
         fn t(input : &str, expected : &str) -> Result<(), MatchError> {
