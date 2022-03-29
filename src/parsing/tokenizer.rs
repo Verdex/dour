@@ -25,6 +25,12 @@ pub enum Token {
     Comma,
     SemiColon,
     Colon,
+    Dot,
+    OrBar,
+    SLArrow,
+    SRArrow,
+    DLArrow,
+    DRArrow,
 }*/
 
 #[derive(Debug)]
@@ -168,6 +174,32 @@ group!(junk<'a>: char => InternalToken = |input| {
     main(input)
 });
 
+seq!(l_paren<'a>: char => InternalToken = _1 <= '(', { InternalToken::LParen });
+seq!(r_paren<'a>: char => InternalToken = _1 <= ')', { InternalToken::RParen });
+seq!(l_curl<'a>: char => InternalToken = _1 <= '{', { InternalToken::LCurl });
+seq!(r_curl<'a>: char => InternalToken = _1 <= '}', { InternalToken::RCurl });
+seq!(l_square<'a>: char => InternalToken = _1 <= '[', { InternalToken::LSquare });
+seq!(r_square<'a>: char => InternalToken = _1 <= ']', { InternalToken::RSquare });
+seq!(comma<'a>: char => InternalToken = _1 <= ',', { InternalToken::Comma });
+seq!(semicolon<'a>: char => InternalToken = _1 <= ';', { InternalToken::SemiColon });
+seq!(colon<'a>: char => InternalToken = _1 <= ':', { InternalToken::Colon });
+seq!(dot<'a>: char => InternalToken = _1 <= '.', { InternalToken::Dot });
+seq!(or_bar<'a>: char => InternalToken = _1 <= '|', { InternalToken::OrBar });
+seq!(r_angle<'a>: char => InternalToken = _1 <= '>', { InternalToken::RAngle });
+seq!(single_left_arrow<'a>: char => InternalToken = _1 <= '-', _2 <= '>', { InternalToken::SLArrow });
+seq!(double_left_arrow<'a>: char => InternalToken = _1 <= '=', _2 <= '>', { InternalToken::DLArrow });
+
+group!(arrow_group<'a> char => InternalToken = |input| {
+    seq!(l_angle<'a>: char => InternalToken = _1 <= '<', { InternalToken::LAngle });
+    seq!(single_right_arrow<'a>: char => InternalToken = _1 <= '<', _2 <= '-' { InternalToken::SRArrow });
+    seq!(double_right_arrow<'a>: char => InternalToken = _1 <= '<', _2 <= '=' { InternalToken::DRArrow });
+
+    // TODO
+
+    // single and double and ignore fatal?
+
+});
+
 fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, MatchError> {
 
     let mut x = input.char_indices();
@@ -177,6 +209,7 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
                                             | upper_symbol 
                                             | number 
                                             | string 
+                                            | l_paren
                                             );
 
     let mut ret = vec![];
