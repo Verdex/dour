@@ -195,7 +195,45 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
 mod test { 
     use super::*;
 
-    // TODO junk test
+    #[test]
+    fn should_parse_comment() -> Result<(), MatchError> {
+        let input = r#"#this is a comment
+                        false
+        "#;
+        let output = internal_tokenize(input)?;
+
+        assert_eq!( output.len(), 4 );
+        assert_eq!( output[2].start, 43 );
+        assert_eq!( output[2].end,  47);
+
+        let name = match &output[2].item {
+            InternalToken::Bool(n) => *n,
+            _ => panic!("not bool"),
+        };
+
+        assert_eq!( name, false );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_parse_whitespace() -> Result<(), MatchError> {
+        let input = "      \n\t\rfalse";
+        let output = internal_tokenize(input)?;
+
+        assert_eq!( output.len(), 2 );
+        assert_eq!( output[1].start, 9 );
+        assert_eq!( output[1].end,  13);
+
+        let name = match &output[1].item {
+            InternalToken::Bool(n) => *n,
+            _ => panic!("not bool"),
+        };
+
+        assert_eq!( name, false );
+
+        Ok(())
+    }
 
     #[test]
     fn should_parse_string() -> Result<(), MatchError> {
