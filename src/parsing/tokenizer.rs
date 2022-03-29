@@ -189,15 +189,21 @@ seq!(r_angle<'a>: char => InternalToken = _1 <= '>', { InternalToken::RAngle });
 seq!(single_left_arrow<'a>: char => InternalToken = _1 <= '-', _2 <= '>', { InternalToken::SLArrow });
 seq!(double_left_arrow<'a>: char => InternalToken = _1 <= '=', _2 <= '>', { InternalToken::DLArrow });
 
-group!(arrow_group<'a> char => InternalToken = |input| {
-    seq!(l_angle<'a>: char => InternalToken = _1 <= '<', { InternalToken::LAngle });
-    seq!(single_right_arrow<'a>: char => InternalToken = _1 <= '<', _2 <= '-' { InternalToken::SRArrow });
-    seq!(double_right_arrow<'a>: char => InternalToken = _1 <= '<', _2 <= '=' { InternalToken::DRArrow });
+group!(arrow_group<'a>: char => InternalToken = |input| {
+    fn l_angle<'a>( _x : &mut impl Iterator<Item = (usize, char)>) -> Result<Success<InternalToken>, MatchError> {
+        Ok( Success { item: InternalToken::LAngle, start: 0, end: 0 })
+    }
+    seq!(single_right_arrow<'a>: char => InternalToken = _1 <= '-', { InternalToken::SRArrow });
+    seq!(double_right_arrow<'a>: char => InternalToken = _1 <= '=', { InternalToken::DRArrow });
 
-    // TODO
+    alt!(arrow_options<'a>: char => InternalToken = single_right_arrow 
+                                                  | double_right_arrow
+                                                  | l_angle
+                                                  );
 
-    // single and double and ignore fatal?
+    seq!(main<'a>: char => InternalToken = _1 <= '<', x <= arrow_options, { x });
 
+    main(input)
 });
 
 fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, MatchError> {
@@ -210,6 +216,20 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
                                             | number 
                                             | string 
                                             | l_paren
+                                            | r_paren
+                                            | l_curl
+                                            | r_curl
+                                            | l_square
+                                            | r_square
+                                            | comma
+                                            | semicolon
+                                            | colon
+                                            | dot
+                                            | or_bar
+                                            | r_angle
+                                            | single_left_arrow
+                                            | double_left_arrow
+                                            | arrow_group
                                             );
 
     let mut ret = vec![];
@@ -227,6 +247,45 @@ fn internal_tokenize( input : &str ) -> Result<Vec<Success<InternalToken>>, Matc
 #[cfg(test)]
 mod test { 
     use super::*;
+
+    #[test]
+    fn should_handle_double_right_arrow() -> Result<(), MatchError> {
+        let input = " <=";
+        let output = internal_tokenize(input)?;
+
+        assert_eq!( output.len(), 2 );
+        assert_eq!( output[1].start, 1 );
+        assert_eq!( output[1].end, 2 );
+        assert!( matches!( output[1].item, InternalToken::DRArrow ) );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_handle_single_right_arrow() -> Result<(), MatchError> {
+        let input = " <-";
+        let output = internal_tokenize(input)?;
+
+        assert_eq!( output.len(), 2 );
+        assert_eq!( output[1].start, 1 );
+        assert_eq!( output[1].end, 2 );
+        assert!( matches!( output[1].item, InternalToken::SRArrow ) );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_handle_l_angle() -> Result<(), MatchError> {
+        let input = " <";
+        let output = internal_tokenize(input)?;
+
+        assert_eq!( output.len(), 2 );
+        assert_eq!( output[1].start, 1 );
+        assert_eq!( output[1].end, 1 );
+        assert!( matches!( output[1].item, InternalToken::LAngle ) );
+
+        Ok(())
+    }
 
     #[test]
     fn should_parse_comment() -> Result<(), MatchError> {
