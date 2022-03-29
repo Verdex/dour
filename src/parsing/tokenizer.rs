@@ -1,7 +1,8 @@
 
 use array_pattern::{Success, MatchError, seq, alt, pred, group};
 
-/*#[derive(Debug)]
+
+#[derive(Debug)]
 pub struct TMeta {
     pub start : usize,
     pub end : usize,
@@ -9,29 +10,77 @@ pub struct TMeta {
 
 #[derive(Debug)]
 pub enum Token {
-    LowerSymbol(String),
-    UpperSymbol(String),
-    Bool(bool),
-    Number(f64),
-    String(String),
-    LParen,
-    RParen,
-    LCurl,
-    RCurl,
-    LSquare,
-    RSquare,
-    LAngle,
-    RAngle,
-    Comma,
-    SemiColon,
-    Colon,
-    Dot,
-    OrBar,
-    SLArrow,
-    SRArrow,
-    DLArrow,
-    DRArrow,
-}*/
+    LowerSymbol(TMeta, String),
+    UpperSymbol(TMeta, String),
+    Bool(TMeta, bool),
+    Number(TMeta, f64),
+    String(TMeta, String),
+    LParen(TMeta),
+    RParen(TMeta),
+    LCurl(TMeta),
+    RCurl(TMeta),
+    LSquare(TMeta),
+    RSquare(TMeta),
+    LAngle(TMeta),
+    RAngle(TMeta),
+    Comma(TMeta),
+    SemiColon(TMeta),
+    Colon(TMeta),
+    Dot(TMeta),
+    OrBar(TMeta),
+    SLArrow(TMeta),
+    SRArrow(TMeta),
+    DLArrow(TMeta),
+    DRArrow(TMeta),
+}
+
+pub fn tokenize(input : &str) -> Result<Vec<Token>, String> {
+    match internal_tokenize(input) {
+        Ok(ts) => {
+            Ok(ts.into_iter()
+                 .map(|t| map(t))
+                 .filter(|t| matches!(t, Some(_)))
+                 .map(|t| t.unwrap())
+                 .collect())
+         },
+        Err(MatchError::ErrorEndOfFile | MatchError::FatalEndOfFile) =>
+            Err("Encountered unexpected end of file while tokenizing.".into()),
+        Err(MatchError::Error(i) | MatchError::Fatal(i)) => {
+            let error_reporter::ErrorReport { line, column, display } = error_reporter::report(input, i, i);
+            let ret = format!("Encountered tokenization error at line {line} and column {column}:\n\n{display}");
+            Err(ret)
+        },
+    }
+}
+
+fn map(internal : Success<InternalToken>) -> Option<Token> {
+    fn m(start:usize, end:usize) -> TMeta { TMeta { start, end } }
+    match internal {
+        Success { item: InternalToken::Junk, .. } => None,
+        Success { item: InternalToken::LowerSymbol(s), start, end } => Some(Token::LowerSymbol(m(start, end), s)),
+        Success { item: InternalToken::UpperSymbol(s), start, end } => Some(Token::UpperSymbol(m(start, end), s)),
+        Success { item: InternalToken::Bool(b), start, end } => Some(Token::Bool(m(start, end), b)),
+        Success { item: InternalToken::Number(f), start, end } => Some(Token::Number(m(start, end), f)),
+        Success { item: InternalToken::String(s), start, end } => Some(Token::String(m(start, end), s)),
+        Success { item: InternalToken::LParen, start, end } => Some(Token::LParen(m(start, end))),
+        Success { item: InternalToken::RParen, start, end } => Some(Token::RParen(m(start, end))),
+        Success { item: InternalToken::LCurl, start, end } => Some(Token::LCurl(m(start, end))),
+        Success { item: InternalToken::RCurl, start, end } => Some(Token::RCurl(m(start, end))),
+        Success { item: InternalToken::LSquare, start, end } => Some(Token::LSquare(m(start, end))),
+        Success { item: InternalToken::RSquare, start, end } => Some(Token::RSquare(m(start, end))),
+        Success { item: InternalToken::LAngle, start, end } => Some(Token::LAngle(m(start, end))),
+        Success { item: InternalToken::RAngle, start, end } => Some(Token::RAngle(m(start, end))),
+        Success { item: InternalToken::Comma, start, end } => Some(Token::Comma(m(start, end))),
+        Success { item: InternalToken::SemiColon, start, end } => Some(Token::SemiColon(m(start, end))),
+        Success { item: InternalToken::Colon, start, end } => Some(Token::Colon(m(start, end))),
+        Success { item: InternalToken::Dot, start, end } => Some(Token::Dot(m(start, end))),
+        Success { item: InternalToken::OrBar, start, end } => Some(Token::OrBar(m(start, end))),
+        Success { item: InternalToken::SLArrow, start, end } => Some(Token::SLArrow(m(start, end))),
+        Success { item: InternalToken::SRArrow, start, end } => Some(Token::SRArrow(m(start, end))),
+        Success { item: InternalToken::DLArrow, start, end } => Some(Token::DLArrow(m(start, end))),
+        Success { item: InternalToken::DRArrow, start, end } => Some(Token::DRArrow(m(start, end))),
+    }
+}
 
 #[derive(Debug)]
 enum InternalToken {
