@@ -239,9 +239,9 @@ seq!(single_left_arrow<'a>: char => InternalToken = _1 <= '-', _2 <= '>', { Inte
 seq!(double_left_arrow<'a>: char => InternalToken = _1 <= '=', _2 <= '>', { InternalToken::DLArrow });
 
 group!(arrow_group<'a>: char => InternalToken = |input| {
-    fn l_angle<'a>( _x : &mut impl Iterator<Item = (usize, char)>) -> Result<Success<InternalToken>, MatchError> {
-        Ok( Success { item: InternalToken::LAngle, start: 0, end: 0 })
-    }
+    pred!(fail<'a>: char => char = |_c : char| false);
+    seq!(maybe ~ m_fail<'a>: char => () = _1 <= fail, { () });
+    seq!(l_angle<'a>: char => InternalToken = _1 <= m_fail, { InternalToken::LAngle });
     seq!(single_right_arrow<'a>: char => InternalToken = _1 <= '-', { InternalToken::SRArrow });
     seq!(double_right_arrow<'a>: char => InternalToken = _1 <= '=', { InternalToken::DRArrow });
 
